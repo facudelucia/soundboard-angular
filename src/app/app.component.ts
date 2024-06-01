@@ -2,6 +2,7 @@
 import { GifsService } from './gifs/gifs.service';
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
+import { AudioItem, Gifs } from './interfaces/gifs.interface';
 
 @Component({
   selector: 'app-root',
@@ -9,9 +10,11 @@ import { Subscription } from 'rxjs';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit, OnDestroy {
-  title = 'pealapp';
+  title: string = 'pealapp';
+
   gifsSubscription!: Subscription
-  resultados: any[] = [
+
+  resultados: AudioItem[] = [
     { title: 'Vas a morir Moe', audio: new Audio('../assets/audio1.mp3'), image: '', isPlaying: false },
     { title: 'Hola Señor Thompson', audio: new Audio('../assets/audio2.mp3'), image: '', isPlaying: false },
     { title: 'Salvame Jebus', audio: new Audio('../assets/audio3.mp3'), image: '', isPlaying: false },
@@ -23,33 +26,57 @@ export class AppComponent implements OnInit, OnDestroy {
     { title: 'El coco está en la casa', audio: new Audio('../assets/audio9.mp3'), image: '', isPlaying: false },
     { title: 'Niam Niam Niam', audio: new Audio('../assets/audio10.mp3'), image: '', isPlaying: false }
   ]
+
   isPlaying: boolean = false
-  j = 0;
+
+  j: number = 0;
+
   constructor(private gifsService: GifsService) { }
-  ngOnInit() {
+
+  ngOnInit(): void {
     this.gifsSubscription = this.gifsService.buscarGifs()
-      .subscribe((resp: any) => {
-        /* resp.data.map((item: any) => this.resultados.push(item.images.downsized_medium)) */
-        for (let i = 0; i < resp.data.length; i++) {
-          this.resultados[i].image = resp.data[i].images.downsized_medium.url
-        }
+      .subscribe((resp: Gifs) => {
+        resp.data?.forEach((gif, index) => {
+          if (this.resultados[index]) {
+            this.resultados[index].image = gif.images?.downsized_medium?.url || '';
+          }
+        });
       })
   }
-  ngOnDestroy() {
-    this.gifsSubscription.unsubscribe()
+
+  ngOnDestroy(): void {
+    if (this.gifsSubscription) {
+      this.gifsSubscription.unsubscribe();
+    }
   }
-  playSound(audio: any, num: number) {
-    if (this.isPlaying) {
-      this.isPlaying = false
-      this.resultados[num].isPlaying = false
-      audio.pause();
+
+  playSound(audio: HTMLAudioElement, num: number): void {
+    if (num < 0 || num >= this.resultados.length) {
+      console.error('Index out of bounds');
+      return;
     }
 
-    else if (!this.isPlaying) {
-      this.isPlaying = true
-      this.resultados[num].isPlaying = true
-      audio.load()
+    const currentAudioItem = this.resultados[num];
+
+    if (currentAudioItem.isPlaying) {
+      this.stopAllAudio();
+    } else {
+      this.stopAllAudio();
+      this.isPlaying = true;
+      currentAudioItem.isPlaying = true;
+      audio.load();
       audio.play();
     }
   }
+
+  private stopAllAudio(): void {
+    this.isPlaying = false;
+    this.resultados.forEach(item => {
+      if (item.isPlaying) {
+        item.audio.pause();
+        item.isPlaying = false;
+      }
+    });
+  }
+
 }
